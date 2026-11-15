@@ -9,6 +9,13 @@ const weatherCard = document.querySelector("#weather-card");
 const recentSection = document.querySelector("#recent-section");
 const recentSearches = document.querySelector("#recent-searches");
 const trendChart = document.querySelector("#trend-chart");
+const chatLauncher = document.querySelector("#chat-launcher");
+const chatPanel = document.querySelector("#chat-panel");
+const chatClose = document.querySelector("#chat-close");
+const chatForm = document.querySelector("#chat-form");
+const chatInput = document.querySelector("#chat-input");
+const chatSend = document.querySelector("#chat-send");
+const chatMessages = document.querySelector("#chat-messages");
 
 const RECENT_SEARCHES_KEY = "weather-now.recent-searches";
 const TEMPERATURE_UNIT_KEY = "weather-now.temperature-unit";
@@ -19,6 +26,7 @@ let unit = readStoredUnit();
 let suggestionsTimer;
 let suggestionsController;
 let tooltipHideTimer;
+let chatHistory = [];
 
 function setStatus(message, state = "info") {
   statusMessage.textContent = message;
@@ -321,6 +329,13 @@ function renderTemperatureTrend(days) {
 }
 
 function displayWeather(weather) {
+  if (
+    currentWeather &&
+    (currentWeather.city !== weather.city ||
+      currentWeather.country !== weather.country)
+  ) {
+    resetChatConversation();
+  }
   currentWeather = weather;
   const place = weather.country
     ? `${weather.city}, ${weather.country}`
@@ -351,6 +366,72 @@ function displayWeather(weather) {
   );
   renderTemperatureTrend(weather.trend);
   weatherCard.hidden = false;
+}
+
+function resetChatConversation() {
+  chatHistory = [];
+  chatMessages.replaceChildren();
+  appendChatMessage(
+    "assistant",
+    "Weather updated. Ask me about these conditions or the forecast.",
+  );
+}
+
+function appendChatMessage(role, text) {
+  const message = document.createElement("p");
+  message.className = `chat-message ${role}`;
+  message.textContent = text;
+  chatMessages.append(message);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function setChatOpen(open) {
+  chatPanel.hidden = !open;
+  chatLauncher.setAttribute("aria-expanded", String(open));
+  if (open) {
+    chatInput.focus();
+  }
+}
+
+async function sendChatMessage(message) {
+  chatSend.disabled = true;
+  chatInput.disabled = true;
+  appendChatMessage("user", message);
+
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        history: chatHistory.slice(-12),
+        weather: currentWeather,
+      }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.detail || "The weather assistant could not reply.");
+    }
+
+    chatHistory.push(
+      { role: "user", text: message },
+      { role: "model", text: result.reply },
+    );
+    chatHistory = chatHistory.slice(-12);
+    appendChatMessage("assistant", result.reply);
+  } catch (error) {
+    appendChatMessage(
+      "assistant error",
+      error instanceof Error
+        ? error.message
+        : "Something went wrong. Please try again.",
+    );
+  } finally {
+    chatSend.disabled = false;
+    chatInput.disabled = false;
+    chatInput.focus();
+  }
 }
 
 async function loadWeather(query, description) {
@@ -489,3 +570,29 @@ unitToggle.setAttribute(
   "aria-label",
   `Switch to ${unit === "C" ? "Fahrenheit" : "Celsius"}`,
 );
+
+chatLauncher.addEventListener("click", () => {
+  setChatOpen(chatPanel.hidden);
+});
+
+chatClose.addEventListener("click", () => {
+  setChatOpen(false);
+  chatLauncher.focus();
+});
+
+chatForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const message = chatInput.value.trim();
+  if (!message) {
+    return;
+  }
+  chatInput.value = "";
+  sendChatMessage(message);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !chatPanel.hidden) {
+    setChatOpen(false);
+    chatLauncher.focus();
+  }
+});

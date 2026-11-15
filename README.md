@@ -6,7 +6,8 @@ forecast, and a 10-day temperature trend from
 [Open-Meteo](https://open-meteo.com/), and returns JSON.
 The web page also offers city suggestions, recent searches, a Celsius/Fahrenheit
 toggle, and optional current-location search. Open-Meteo does not require an
-API key for this example.
+API key for weather. The optional Gemini-powered weather chat uses a private
+server-side API key.
 
 ## 1. Set up the project
 
@@ -28,10 +29,41 @@ Install the project's dependencies:
 python -m pip install -r requirements.txt
 ```
 
+## Configure the Gemini weather assistant
+
+Create a Gemini API key in Google AI Studio. Do not paste the key into browser
+JavaScript, commit it, or send it in chat. Copy the example environment file
+and add your key to the local `.env` file:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and replace the placeholder value for `GEMINI_API_KEY`. The `.env`
+file is ignored by Git. `GEMINI_MODEL` defaults to `gemini-3.8-flash`; change
+it in `.env` if you want to use another model available to your account.
+Restart the server after changing environment values. If an older `.env` still
+sets `GEMINI_MODEL=gemini-2.5-flash`, update that line to
+`GEMINI_MODEL=gemini-3.8-flash`.
+
+To test the Gemini key and model directly, independently of the weather chat
+route, run:
+
+```bash
+./.venv/bin/python check_gemini.py
+```
+
+This makes one small Gemini request and prints the configured model and
+response, or Gemini's HTTP status and error message. It never prints the API
+key. If this succeeds but chat still fails, the issue is in the app request;
+if this fails with 503 too, Gemini is rejecting the request before the app's
+weather-chat prompt is involved. Gemini can temporarily return 503 during
+high demand; wait a few minutes and run the test again.
+
 ## 2. Run the API
 
 ```bash
-uvicorn main:app --reload
+./.venv/bin/python -m uvicorn main:app --reload
 ```
 
 Uvicorn starts a local development server. Keep that terminal open, then visit
@@ -39,11 +71,23 @@ Uvicorn starts a local development server. Keep that terminal open, then visit
 <http://127.0.0.1:8000/docs> to try the API directly in FastAPI's interactive
 docs.
 
+Using `./.venv/bin/python -m uvicorn` ensures the server uses the same
+environment where `google-genai` was installed. If you see
+`ImportError: cannot import name 'genai' from 'google'`, stop the server and
+run it with this command from the project folder. If dependencies are not
+installed in `.venv`, run:
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt
+```
+
 The page's HTML, CSS, and JavaScript live in the `static/` folder. The browser
 asks `/api/cities` for suggestions as you type, then requests `/api/weather`
 when you search. The same weather endpoint accepts latitude and longitude for
-the current-location button. Recent searches and the chosen temperature unit
-are saved in your browser.
+the current-location button. The Gemini chat sends requests to your FastAPI
+server at `/api/chat`; the server adds current weather context and calls Gemini
+without exposing the key to the browser. Recent searches and the chosen
+temperature unit are saved in your browser.
 
 The current-location feature requires your permission. Browsers allow location
 access on `localhost` during development and on secure HTTPS websites after
@@ -108,7 +152,8 @@ The Celsius/Fahrenheit toggle updates the chart and its detail popovers.
 
 If the city cannot be found, the API responds with `404`. If the weather
 provider is unavailable or sends an unexpected response, the API responds with
-`502`.
+`502`. The chat endpoint responds with `503` if `GEMINI_API_KEY` is not set,
+and with `502` if Gemini is unavailable.
 
 ## Run the tests
 

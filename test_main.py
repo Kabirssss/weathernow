@@ -64,6 +64,134 @@ def test_frontend_assets_are_served() -> None:
     assert "trend-date-marker" in response.text
     assert "TODAY" in response.text
     assert "trend-tooltip" in response.text
+    assert "api/chat" in response.text
+
+
+def test_chat_endpoint_requires_gemini_api_key(monkeypatch) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    response = client.post(
+        "/api/chat",
+        json={"message": "Should I bring an umbrella?"},
+    )
+
+    assert response.status_code == 503
+    assert "GEMINI_API_KEY" in response.json()["detail"]
+
+
+def test_chat_endpoint_sends_weather_context_to_gemini(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-a-real-secret")
+    calls = {}
+
+    class FakeResponse:
+        text = "It is partly cloudy in London."
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            calls.update(kwargs)
+            return FakeResponse()
+
+    class FakeClient:
+        def __init__(self, *, api_key: str) -> None:
+            assert api_key == "test-key-not-a-real-secret"
+            self.models = FakeModels()
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(main.genai, "Client", FakeClient)
+    weather = sample_weather()
+
+    response = client.post(
+        "/api/chat",
+        json={
+            "message": "What is the weather like?",
+            "weather": weather.model_dump(mode="json"),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"reply": "It is partly cloudy in London."}
+    assert calls["model"] == main.GEMINI_MODEL
+    assert "London" in calls["contents"][-1].parts[0].text
+    assert "temperature_c" in calls["contents"][-1].parts[0].text
+
+
+def test_chat_endpoint_explains_unavailable_gemini_model(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-a-real-secret")
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            raise main.genai.errors.ClientError(
+                404,
+                {
+                    "error": {
+                        "message": "The configured model is unavailable.",
+                        "status": "NOT_FOUND",
+                    }
+                },
+            )
+
+    class FakeClient:
+        def __init__(self, *, api_key: str) -> None:
+            self.models = FakeModels()
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(main.genai, "Client", FakeClient)
+
+    response = client.post(
+        "/api/chat",
+        json={"message": "What is the weather like?"},
+    )
+
+    assert response.status_code == 502
+    assert "GEMINI_MODEL=gemini-3.8-flash" in response.json()["detail"]
+
+
+def test_chat_endpoint_explains_temporary_gemini_outage(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-a-real-secret")
+
+    class FakeModels:
+        def generate_content(self, **kwargs):
+            raise main.genai.errors.ServerError(
+                503,
+                {
+                    "error": {
+                        "message": (
+                            "This model is currently experiencing high demand."
+                        ),
+                        "status": "UNAVAILABLE",
+                    }
+                },
+            )
+
+    class FakeClient:
+        def __init__(self, *, api_key: str) -> None:
+            self.models = FakeModels()
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(main.genai, "Client", FakeClient)
+
+    response = client.post(
+        "/api/chat",
+        json={"message": "What is the weather like?"},
+    )
+
+    assert response.status_code == 503
+    assert "high demand right now" in response.json()["detail"]
+
+
+def test_chat_endpoint_rejects_long_message() -> None:
+    response = client.post(
+        "/api/chat",
+        json={"message": "weather " * 200},
+    )
+
+    assert response.status_code == 422
 
 
 def test_weather_endpoint_returns_weather(monkeypatch) -> None:

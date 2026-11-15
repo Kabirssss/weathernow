@@ -148,6 +148,63 @@
         </section>
       </section>
 
+      <section id="chat-widget" class="chat-widget" aria-label="Weather assistant">
+        <div id="chat-panel" class="chat-panel" hidden>
+          <div class="chat-heading">
+            <div>
+              <p class="eyebrow">GEMINI WEATHER ASSISTANT</p>
+              <h2>Ask about the weather</h2>
+            </div>
+            <button
+              id="chat-close"
+              class="chat-close"
+              type="button"
+              aria-label="Close weather assistant"
+            >
+              ×
+            </button>
+          </div>
+          <div
+            id="chat-messages"
+            class="chat-messages"
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+          >
+            <p class="chat-message assistant">
+              Hi! Search for a city, then ask me about its current weather or
+              forecast.
+            </p>
+          </div>
+          <form id="chat-form" class="chat-form">
+            <label class="sr-only" for="chat-input">Your weather question</label>
+            <input
+              id="chat-input"
+              name="message"
+              type="text"
+              placeholder="Ask a weather question…"
+              maxlength="1000"
+              autocomplete="off"
+              required
+            />
+            <button id="chat-send" type="submit" aria-label="Send message">
+              ↑
+            </button>
+          </form>
+          <p class="chat-note">AI responses can be inaccurate.</p>
+        </div>
+        <button
+          id="chat-launcher"
+          class="chat-launcher"
+          type="button"
+          aria-expanded="false"
+          aria-controls="chat-panel"
+        >
+          <span aria-hidden="true">✦</span>
+          <span>Ask about weather</span>
+        </button>
+      </section>
+
       <footer>Weather data provided by Open-Meteo</footer>
     </main>
   </body>

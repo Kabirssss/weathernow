@@ -1,5 +1,6 @@
 fastapi
 httpx
-httpx
+google-genai
 pytest
+python-dotenv
 uvicorn[standard]
