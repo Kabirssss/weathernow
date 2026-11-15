@@ -24,29 +24,47 @@
       <section class="search-panel" aria-labelledby="page-title">
         <p class="eyebrow">CURRENT CONDITIONS</p>
         <h1 id="page-title">Weather, wherever you are.</h1>
-        <p class="intro">Search for a city to see what it feels like outside.</p>
+        <p class="intro">Search a city or use your current location.</p>
 
-        <form id="search-form" class="search-form">
-          <label class="sr-only" for="city-input">City name</label>
-          <span class="search-icon" aria-hidden="true">⌕</span>
-          <input
-            id="city-input"
-            name="city"
-            type="search"
-            placeholder="Try Pune, London, or Tokyo"
-            autocomplete="on"
-            maxlength="100"
-            required
-          />
-          <button id="search-button" type="submit">
-            <span>Search</span>
-            <span aria-hidden="true">→</span>
+        <div class="search-actions">
+          <form id="search-form" class="search-form">
+            <label class="sr-only" for="city-input">City name</label>
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input
+              id="city-input"
+              name="city"
+              type="search"
+              list="city-suggestions"
+              placeholder="Try Pune, London, or Tokyo"
+              autocomplete="off"
+              maxlength="100"
+              required
+            />
+            <datalist id="city-suggestions"></datalist>
+            <button id="search-button" type="submit">
+              <span>Search</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
+          <button id="location-button" class="location-button" type="button">
+            <span aria-hidden="true">◎</span>
+            Use my location
           </button>
-        </form>
+        </div>
 
         <p id="status-message" class="status" role="status" aria-live="polite">
           Enter a city name to get started.
         </p>
+
+        <section
+          id="recent-section"
+          class="recent-section"
+          aria-label="Recent searches"
+          hidden
+        >
+          <p class="recent-label">RECENT SEARCHES</p>
+          <div id="recent-searches" class="recent-searches"></div>
+        </section>
       </section>
 
       <section
@@ -61,40 +79,73 @@
             <h2 id="location-name"></h2>
             <p id="location-timezone" class="timezone"></p>
           </div>
-          <span class="weather-symbol" aria-hidden="true">☁</span>
         </div>
 
-        <div class="temperature-row">
-          <p id="temperature" class="temperature"></p>
-          <div>
-            <p id="weather-description" class="weather-description"></p>
-            <p id="feels-like" class="feels-like"></p>
+        <div class="weather-overview">
+          <div class="temperature-row">
+            <p id="temperature" class="temperature"></p>
+            <div>
+              <p id="weather-description" class="weather-description"></p>
+              <p id="feels-like" class="feels-like"></p>
+            </div>
           </div>
+
+          <aside class="weather-side" aria-label="Weather details">
+            <div class="weather-tools">
+              <button
+                id="unit-toggle"
+                class="unit-toggle"
+                type="button"
+                aria-label="Switch to Fahrenheit"
+              >
+                °C
+              </button>
+              <span id="weather-symbol" class="weather-symbol" aria-hidden="true">☁</span>
+            </div>
+
+            <div class="details">
+              <div class="detail">
+                <span class="detail-icon" aria-hidden="true">◉</span>
+                <div>
+                  <p class="detail-label">Humidity</p>
+                  <p id="humidity" class="detail-value"></p>
+                </div>
+              </div>
+              <div class="detail">
+                <span class="detail-icon" aria-hidden="true">↗</span>
+                <div>
+                  <p class="detail-label">Wind</p>
+                  <p id="wind" class="detail-value"></p>
+                </div>
+              </div>
+              <div class="detail">
+                <span class="detail-icon" aria-hidden="true">◷</span>
+                <div>
+                  <p class="detail-label">Local time</p>
+                  <p id="daylight" class="detail-value"></p>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
 
-        <div class="details">
-          <div class="detail">
-            <span class="detail-icon" aria-hidden="true">◉</span>
+        <section class="trend-section" aria-labelledby="trend-title">
+          <div class="trend-heading">
             <div>
-              <p class="detail-label">Humidity</p>
-              <p id="humidity" class="detail-value"></p>
+              <p class="eyebrow">TEMPERATURE OUTLOOK</p>
+              <h3 id="trend-title">10-day temperature trend</h3>
+            </div>
+            <div class="chart-legend" aria-label="Chart legend">
+              <span><i class="legend-dot high" aria-hidden="true"></i>High</span>
+              <span><i class="legend-dot low" aria-hidden="true"></i>Low</span>
             </div>
           </div>
-          <div class="detail">
-            <span class="detail-icon" aria-hidden="true">↗</span>
-            <div>
-              <p class="detail-label">Wind</p>
-              <p id="wind" class="detail-value"></p>
-            </div>
-          </div>
-          <div class="detail">
-            <span class="detail-icon" aria-hidden="true">◷</span>
-            <div>
-              <p class="detail-label">Local time</p>
-              <p id="daylight" class="detail-value"></p>
-            </div>
-          </div>
-        </div>
+          <div
+            id="trend-chart"
+            class="trend-chart"
+            aria-label="Ten-day high and low temperature chart"
+          ></div>
+        </section>
       </section>
 
       <footer>Weather data provided by Open-Meteo</footer>

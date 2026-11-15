@@ -41,9 +41,25 @@ class CurrentConditions(BaseModel):
     is_day: int
 
 
+class DailyConditions(BaseModel):
+    time: list[str]
+    weather_code: list[int]
+    temperature_2m_max: list[float]
+    temperature_2m_min: list[float]
+
+
 class ForecastResponse(BaseModel):
     timezone: str
     current: CurrentConditions
+    daily: DailyConditions
+
+
+class ForecastDay(BaseModel):
+    date: str
+    weather_code: int
+    description: str
+    high_c: float
+    low_c: float
 
 
 class WeatherResponse(BaseModel):
@@ -57,6 +73,8 @@ class WeatherResponse(BaseModel):
     weather_code: int
     description: str
     is_day: bool
+    forecast: list[ForecastDay]
+    trend: list[ForecastDay]
 
 
 def describe_weather(code: int) -> str:
@@ -93,27 +111,29 @@ def describe_weather(code: int) -> str:
     return descriptions.get(code, "Unknown conditions")
 
 
-async def fetch_weather(city: str) -> WeatherResponse:
+async def search_locations(city: str, count: int = 5) -> list[Location]:
     async with httpx.AsyncClient(timeout=10.0) as client:
         try:
-            location_response = await client.get(
+            response = await client.get(
                 GEOCODING_URL,
-                params={"name": city, "count": 1, "language": "en", "format": "json"},
+                params={
+                    "name": city,
+                    "count": count,
+                    "language": "en",
+                    "format": "json",
+                },
             )
-            location_response.raise_for_status()
-            location_data = location_response.json()
-            location = GeocodingResponse.model_validate(location_data).results
+            response.raise_for_status()
+            return GeocodingResponse.model_validate(response.json()).results
         except (httpx.HTTPError, ValueError, ValidationError) as error:
             raise HTTPException(
                 status_code=502,
                 detail="The weather provider could not look up that city.",
             ) from error
 
-        if not location:
-            raise HTTPException(status_code=404, detail=f"No city found for '{city}'.")
 
-        place = location[0]
-
+async def fetch_weather_for_location(place: Location) -> WeatherResponse:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         try:
             forecast_response = await client.get(
                 FORECAST_URL,
@@ -124,12 +144,33 @@ async def fetch_weather(city: str) -> WeatherResponse:
                         "temperature_2m,apparent_temperature,relative_humidity_2m,"
                         "wind_speed_10m,weather_code,is_day"
                     ),
+                    "daily": (
+                        "weather_code,temperature_2m_max,temperature_2m_min"
+                    ),
+                    "forecast_days": 10,
                     "wind_speed_unit": "kmh",
                     "timezone": "auto",
                 },
             )
             forecast_response.raise_for_status()
             forecast_data = ForecastResponse.model_validate(forecast_response.json())
+
+            daily_forecast = [
+                ForecastDay(
+                    date=date,
+                    weather_code=code,
+                    description=describe_weather(code),
+                    high_c=high,
+                    low_c=low,
+                )
+                for date, code, high, low in zip(
+                    forecast_data.daily.time,
+                    forecast_data.daily.weather_code,
+                    forecast_data.daily.temperature_2m_max,
+                    forecast_data.daily.temperature_2m_min,
+                    strict=True,
+                )
+            ]
         except (httpx.HTTPError, ValueError, ValidationError) as error:
             raise HTTPException(
                 status_code=502,
@@ -148,13 +189,62 @@ async def fetch_weather(city: str) -> WeatherResponse:
         weather_code=current.weather_code,
         description=describe_weather(current.weather_code),
         is_day=current.is_day == 1,
+        forecast=daily_forecast[:5],
+        trend=daily_forecast,
     )
+
+
+async def fetch_weather(city: str) -> WeatherResponse:
+    locations = await search_locations(city, count=1)
+    if not locations:
+        raise HTTPException(status_code=404, detail=f"No city found for '{city}'.")
+    return await fetch_weather_for_location(locations[0])
+
+
+async def fetch_weather_for_coordinates(
+    latitude: float, longitude: float
+) -> WeatherResponse:
+    place = Location(
+        name="Your location",
+        latitude=latitude,
+        longitude=longitude,
+    )
+    return await fetch_weather_for_location(place)
+
+
+@app.get("/api/cities", response_model=list[Location])
+async def get_city_suggestions(
+    name: Annotated[str, Query(min_length=2, max_length=100)],
+) -> list[Location]:
+    name = name.strip()
+    if len(name) < 2:
+        raise HTTPException(
+            status_code=422,
+            detail="Enter at least two characters to search for a city.",
+        )
+    return await search_locations(name)
 
 
 @app.get("/api/weather", response_model=WeatherResponse)
 async def get_weather(
-    city: Annotated[str, Query(min_length=1, max_length=100)],
+    city: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
+    latitude: Annotated[float | None, Query(ge=-90, le=90)] = None,
+    longitude: Annotated[float | None, Query(ge=-180, le=180)] = None,
 ) -> WeatherResponse:
+    if latitude is not None or longitude is not None:
+        if latitude is None or longitude is None or city is not None:
+            raise HTTPException(
+                status_code=422,
+                detail="Provide both latitude and longitude, without a city name.",
+            )
+        return await fetch_weather_for_coordinates(latitude, longitude)
+
+    if city is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Provide a city name or your latitude and longitude.",
+        )
+
     city = city.strip()
     if not city:
         raise HTTPException(status_code=422, detail="City must not be blank.")

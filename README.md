@@ -1,9 +1,12 @@
 # Your first weather API
 
-This project is a small web API built with Python and FastAPI. It accepts a
-city name, looks up the city's coordinates, gets its current weather from
-[Open-Meteo](https://open-meteo.com/), and returns a simple JSON response.
-Open-Meteo does not require an API key for this example.
+This project is a small weather app built with Python and FastAPI. It accepts a
+city name, looks up the city's coordinates, gets current conditions, a 5-day
+forecast, and a 10-day temperature trend from
+[Open-Meteo](https://open-meteo.com/), and returns JSON.
+The web page also offers city suggestions, recent searches, a Celsius/Fahrenheit
+toggle, and optional current-location search. Open-Meteo does not require an
+API key for this example.
 
 ## 1. Set up the project
 
@@ -36,9 +39,15 @@ Uvicorn starts a local development server. Keep that terminal open, then visit
 <http://127.0.0.1:8000/docs> to try the API directly in FastAPI's interactive
 docs.
 
-The page's HTML, CSS, and JavaScript live in the `static/` folder. When you
-search for a city, the browser sends a request to `/api/weather` and displays
-the JSON response as a weather card.
+The page's HTML, CSS, and JavaScript live in the `static/` folder. The browser
+asks `/api/cities` for suggestions as you type, then requests `/api/weather`
+when you search. The same weather endpoint accepts latitude and longitude for
+the current-location button. Recent searches and the chosen temperature unit
+are saved in your browser.
+
+The current-location feature requires your permission. Browsers allow location
+access on `localhost` during development and on secure HTTPS websites after
+deployment.
 
 ## 3. Try a weather request
 
@@ -61,11 +70,25 @@ The response is JSON, for example:
   "wind_speed_kmh": 12.0,
   "weather_code": 2,
   "description": "Partly cloudy",
-  "is_day": true
+  "is_day": true,
+  "forecast": [
+    {
+      "date": "2026-11-15",
+      "weather_code": 2,
+      "description": "Partly cloudy",
+      "high_c": 19.0,
+      "low_c": 12.0
+    }
+  ]
 }
 ```
 
 Weather values change; the example above is only to show the response shape.
+The `forecast` list retains five daily summaries for API clients. The page
+shows the ten daily high/low values from `trend` as a chart instead of a
+separate five-day panel. Hover over or keyboard-focus a date to see its
+conditions and high/low temperatures; the first date is marked **Today**.
+The Celsius/Fahrenheit toggle updates the chart and its detail popovers.
 
 ## How the request works
 
@@ -75,9 +98,13 @@ Weather values change; the example above is only to show the response shape.
    name is rejected with a `422` response.
 3. `fetch_weather` asks Open-Meteo's geocoding service to turn the city into
    latitude and longitude.
-4. It uses those coordinates to request current conditions from Open-Meteo's
-   forecast service.
-5. The `WeatherResponse` model defines the JSON fields this API returns.
+4. It uses those coordinates to request current conditions and ten days of
+   daily high/low temperatures from Open-Meteo.
+5. The API keeps five days in `forecast` for clients and returns all ten days
+   in `trend` for the chart shown by the page.
+6. The `WeatherResponse` model defines the JSON fields this API returns.
+7. The browser shows the result, converts temperatures when you change units,
+   and remembers city searches in local storage.
 
 If the city cannot be found, the API responds with `404`. If the weather
 provider is unavailable or sends an unexpected response, the API responds with
