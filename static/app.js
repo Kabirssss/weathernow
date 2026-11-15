@@ -33,7 +33,7 @@ function displayWeather(weather) {
 }
 
 form.addEventListener("submit", async (event) => {
-  //event.preventDefault();
+  event.preventDefault();
 
   const city = cityInput.value.trim();
   if (!city) {
