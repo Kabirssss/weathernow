@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Search for a city to see its current weather."
+    />
+    <title>Weather Now</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <main class="page">
+      <header class="topbar">
+        <a class="brand" href="/" aria-label="Weather Now home">
+          <span class="brand-icon" aria-hidden="true">☀</span>
+          <span>weather<span class="brand-light">now</span></span>
+        </a>
+        <span class="topbar-note">Your daily forecast</span>
+      </header>
+
+      <section class="search-panel" aria-labelledby="page-title">
+        <p class="eyebrow">CURRENT CONDITIONS</p>
+        <h1 id="page-title">Weather, wherever you are.</h1>
+        <p class="intro">Search for a city to see what it feels like outside.</p>
+
+        <form id="search-form" class="search-form">
+          <label class="sr-only" for="city-input">City name</label>
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input
+            id="city-input"
+            name="city"
+            type="search"
+            placeholder="Try Pune, London, or Tokyo"
+            autocomplete="on"
+            maxlength="100"
+            required
+          />
+          <button id="search-button" type="submit">
+            <span>Search</span>
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+
+        <p id="status-message" class="status" role="status" aria-live="polite">
+          Enter a city name to get started.
+        </p>
+      </section>
+
+      <section
+        id="weather-card"
+        class="weather-card"
+        aria-label="Current weather"
+        hidden
+      >
+        <div class="weather-heading">
+          <div>
+            <p class="eyebrow">RIGHT NOW</p>
+            <h2 id="location-name"></h2>
+            <p id="location-timezone" class="timezone"></p>
+          </div>
+          <span class="weather-symbol" aria-hidden="true">☁</span>
+        </div>
+
+        <div class="temperature-row">
+          <p id="temperature" class="temperature"></p>
+          <div>
+            <p id="weather-description" class="weather-description"></p>
+            <p id="feels-like" class="feels-like"></p>
+          </div>
+        </div>
+
+        <div class="details">
+          <div class="detail">
+            <span class="detail-icon" aria-hidden="true">◉</span>
+            <div>
+              <p class="detail-label">Humidity</p>
+              <p id="humidity" class="detail-value"></p>
+            </div>
+          </div>
+          <div class="detail">
+            <span class="detail-icon" aria-hidden="true">↗</span>
+            <div>
+              <p class="detail-label">Wind</p>
+              <p id="wind" class="detail-value"></p>
+            </div>
+          </div>
+          <div class="detail">
+            <span class="detail-icon" aria-hidden="true">◷</span>
+            <div>
+              <p class="detail-label">Local time</p>
+              <p id="daylight" class="detail-value"></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>Weather data provided by Open-Meteo</footer>
+    </main>
+  </body>
+</html>
