@@ -1,4 +1,5 @@
 # Your first weather API
+Try out the App for free: https://weathernow-xedk.vercel.app/
 
 This project is a small weather app built with Python and FastAPI. It accepts a
 city name, looks up the city's coordinates, gets current conditions, a 5-day
